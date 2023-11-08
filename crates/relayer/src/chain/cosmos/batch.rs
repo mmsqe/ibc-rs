@@ -7,7 +7,7 @@ use ibc_relayer_types::Height;
 use prost::Message;
 use tendermint_rpc::endpoint::broadcast::tx_sync::Response;
 use tendermint_rpc::HttpClient;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::chain::cosmos::encode::encoded_tx_metrics;
 use crate::chain::cosmos::gas::gas_amount_to_fee;
@@ -51,6 +51,12 @@ pub async fn send_batched_messages_and_wait_commit(
         &mut tx_sync_results,
     )
     .await?;
+
+    trace!(
+        "received {} tx results: {:?}",
+        tx_sync_results.len(),
+        tx_sync_results,
+    );
 
     let events = tx_sync_results
         .into_iter()

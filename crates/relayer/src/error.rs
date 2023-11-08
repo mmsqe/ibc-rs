@@ -582,6 +582,22 @@ define_error! {
             { address: String }
             [ TendermintRpcError ]
             |e| { format!("invalid archive node address {}", e.address) },
+
+        EthermintError
+            { detail: String }
+            |e| { format!("ethermint error: {}", e.detail) },
+
+        FromHexError
+            { detail: String }
+            |_| { "error decoding hex string" },
+
+        FromBech32Error
+            { detail: String }
+            |_| { "error decoding bech32 string" },
+
+        KeyringError
+            [crate::keyring::errors::Error]
+            |_| { "keyring error" },
     }
 }
 

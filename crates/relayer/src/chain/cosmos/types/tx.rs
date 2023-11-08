@@ -11,11 +11,13 @@ pub struct SignedTx {
     pub signatures: Vec<Vec<u8>>,
 }
 
+#[derive(Debug)]
 pub enum TxStatus {
     Pending { message_count: usize },
     ReceivedResponse,
 }
 
+#[derive(Debug)]
 pub struct TxSyncResult {
     // the broadcast_tx_sync response
     pub response: Response,

@@ -305,7 +305,7 @@ impl SigningKeyPair for Secp256k1KeyPair {
 
         // SAFETY: hashed_message is 32 bytes, as expected in `Message::from_slice`,
         // so `unwrap` is safe.
-        let message = Message::from_slice(&hashed_message).unwrap();
+        let message = Message::from_slice(hashed_message.as_slice()).unwrap();
 
         Ok(Secp256k1::signing_only()
             .sign_ecdsa(&message, &self.private_key)
@@ -315,5 +315,23 @@ impl SigningKeyPair for Secp256k1KeyPair {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+impl Secp256k1KeyPair {
+    /// Signs a pre-hashed message using the private key and returns recovery_id and signature.
+    pub fn sign_recoverable_prehashed(&self, hash: [u8; 32]) -> Result<(i32, [u8; 64]), Error> {
+        let message = Message::from_slice(&hash[..]).unwrap();
+
+        let (recovery_id, signature) = Secp256k1::signing_only()
+            .sign_ecdsa_recoverable(&message, &self.private_key)
+            .serialize_compact();
+
+        Ok((recovery_id.to_i32(), signature))
+    }
+
+    /// Returns address of keypair.
+    pub fn address(&self) -> [u8; 20] {
+        self.address
     }
 }

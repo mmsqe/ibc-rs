@@ -123,8 +123,15 @@ async fn do_send_tx_with_account_sequence_retry(
                 Code::Ok => {
                     let old_account_sequence = account.sequence;
 
-                    // Increase account s.n.
-                    account.sequence.increment_mut();
+                    if let Some(_) = config.precompiled_contract_address {
+                        // For each eth message, account sequence is incremented by 1
+                        for _ in 0..messages.len() {
+                            account.sequence.increment_mut();
+                        }
+                    } else {
+                        // Increase account s.n.
+                        account.sequence.increment_mut();
+                    }
 
                     debug!(
                         ?response,

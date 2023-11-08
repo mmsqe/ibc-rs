@@ -4,6 +4,8 @@ use serde_derive::{Deserialize, Serialize};
 
 use crate::error::Error;
 
+pub const TYPE_URL: &str = "/ethermint.types.v1.ExtensionOptionDynamicFeeTx";
+
 // ExtensionOptionDynamicFeeTx is an extension option used with ethermint dynamic fee tx.
 // protobuf message: https://github.com/evmos/ethermint/blob/main/proto/ethermint/types/v1/dynamic_fee.proto
 #[derive(Clone, PartialEq, Eq, Message, Serialize, Deserialize)]
@@ -18,7 +20,7 @@ impl ExtensionOptionDynamicFeeTx {
         Message::encode(self, &mut buf)
             .map_err(|e| Error::protobuf_encode("ExtensionOptionDynamicFeeTx".into(), e))?;
         Ok(Any {
-            type_url: "/ethermint.types.v1.ExtensionOptionDynamicFeeTx".to_string(),
+            type_url: TYPE_URL.to_string(),
             value: buf,
         })
     }

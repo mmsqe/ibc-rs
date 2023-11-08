@@ -663,6 +663,8 @@ pub struct ChainConfig {
     pub address_type: AddressType,
     #[serde(default = "Vec::new", skip_serializing_if = "Vec::is_empty")]
     pub extension_options: Vec<ExtensionOption>,
+    #[serde(default)]
+    pub precompiled_contract_address: Option<String>,
 }
 
 /// Attempt to load and parse the TOML config file as a `Config`.

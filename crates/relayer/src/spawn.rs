@@ -2,6 +2,7 @@ use alloc::sync::Arc;
 
 use flex_error::define_error;
 use tokio::runtime::Runtime as TokioRuntime;
+use tracing::info;
 
 use ibc_relayer_types::core::ics24_host::identifier::ChainId;
 
@@ -51,6 +52,8 @@ pub fn spawn_chain_runtime<Handle: ChainHandle>(
         .find_chain(chain_id)
         .cloned()
         .ok_or_else(|| SpawnError::missing_chain_config(chain_id.clone()))?;
+
+    info!("Chain config for '{}' found: {:?}", chain_id, chain_config);
 
     spawn_chain_runtime_with_config(chain_config, rt)
 }

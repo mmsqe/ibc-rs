@@ -26,6 +26,10 @@ pub async fn estimate_fee_and_send_tx(
     tx_memo: &Memo,
     messages: &[Any],
 ) -> Result<Response, Error> {
+    if let Some(_) = config.precompiled_contract_address {
+        return super::ethermint::send_txs(rpc_client, config, key_pair, account, messages).await;
+    }
+
     let fee = estimate_tx_fees(config, key_pair, account, tx_memo, messages).await?;
 
     send_tx_with_fee(

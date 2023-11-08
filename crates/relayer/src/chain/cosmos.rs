@@ -111,6 +111,7 @@ pub mod client;
 pub mod compatibility;
 pub mod encode;
 pub mod estimate;
+pub mod ethermint;
 pub mod fee;
 pub mod gas;
 pub mod query;
