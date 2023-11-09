@@ -71,6 +71,9 @@ tokio-stream = "0.1.14"
 once_cell = "1.17.1"
 rlp = "0.5.2"
 primitive-types = { version = "0.12.1", features = ["rlp"] }
+reqwest = { version = "0.11.22", features = ["json"] }
+alloy-json-abi = "0.4.2"
+alloy-dyn-abi = "0.4.2"
 
 [dependencies.byte-unit]
 version = "4.0.19"

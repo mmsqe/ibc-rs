@@ -598,6 +598,14 @@ define_error! {
         KeyringError
             [crate::keyring::errors::Error]
             |_| { "keyring error" },
+
+        ReqwestError
+            { detail: String }
+            |_| { "reqwest error" },
+
+        AbiError
+            { detail: String }
+            |_| { "abi error" },
     }
 }
 

@@ -172,6 +172,7 @@ impl FullNode {
             extension_options: Default::default(),
             sequential_batch_tx: false,
             precompiled_contract_address: None,
+            json_rpc_address: None,
         })
     }
 

@@ -161,6 +161,7 @@ where
         sequential_batch_tx: false,
         extension_options: Vec::new(),
         precompiled_contract_address: None,
+        json_rpc_address: None,
     })
 }
 

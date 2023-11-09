@@ -22,6 +22,7 @@ pub struct TxConfig {
     pub max_tx_size: MaxTxSize,
     pub extension_options: Vec<Any>,
     pub precompiled_contract_address: Option<String>,
+    pub json_rpc_address: Option<Url>,
 }
 
 impl<'a> TryFrom<&'a ChainConfig> for TxConfig {
@@ -50,6 +51,7 @@ impl<'a> TryFrom<&'a ChainConfig> for TxConfig {
             max_tx_size: config.max_tx_size,
             extension_options,
             precompiled_contract_address: config.precompiled_contract_address.clone(),
+            json_rpc_address: config.json_rpc_address.clone(),
         })
     }
 }

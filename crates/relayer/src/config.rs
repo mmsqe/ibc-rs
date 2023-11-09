@@ -665,6 +665,8 @@ pub struct ChainConfig {
     pub extension_options: Vec<ExtensionOption>,
     #[serde(default)]
     pub precompiled_contract_address: Option<String>,
+    #[serde(default)]
+    pub json_rpc_address: Option<Url>,
 }
 
 /// Attempt to load and parse the TOML config file as a `Config`.
