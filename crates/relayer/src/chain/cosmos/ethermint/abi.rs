@@ -92,7 +92,9 @@ impl<'a> RelayerMessage<'a> {
     pub fn from_msgs(msgs: &'a [Any]) -> Vec<RelayerMessage<'a>> {
         let mut relayer_msgs = vec![];
 
-        for i in 0..msgs.len() {
+        let mut i = 0;
+
+        while i < msgs.len() {
             if i == msgs.len() - 1 {
                 relayer_msgs.push(RelayerMessage::new_single(&msgs[i]));
                 break;
@@ -110,6 +112,7 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndConnectionOpenInit",
                     ));
+                    i += 2;
                 }
                 (
                     ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
@@ -119,6 +122,7 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndConnectionOpenTry",
                     ));
+                    i += 2;
                 }
                 (
                     ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
@@ -128,6 +132,7 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndConnectionOpenAck",
                     ));
+                    i += 2;
                 }
                 (
                     ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
@@ -137,6 +142,7 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndConnectionOpenConfirm",
                     ));
+                    i += 2;
                 }
                 (
                     ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
@@ -146,6 +152,7 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndChannelOpenInit",
                     ));
+                    i += 2;
                 }
                 (
                     ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
@@ -155,6 +162,7 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndChannelOpenTry",
                     ));
+                    i += 2;
                 }
                 (
                     ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
@@ -164,6 +172,7 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndChannelOpenAck",
                     ));
+                    i += 2;
                 }
                 (
                     ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
@@ -173,6 +182,7 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndChannelOpenConfirm",
                     ));
+                    i += 2;
                 }
                 (
                     ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
@@ -182,6 +192,7 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndRecvPacket",
                     ));
+                    i += 2;
                 }
                 (
                     ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
@@ -191,6 +202,7 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndAcknowledgement",
                     ));
+                    i += 2;
                 }
                 (
                     ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
@@ -200,6 +212,7 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndTimeout",
                     ));
+                    i += 2;
                 }
                 (
                     ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
@@ -209,6 +222,7 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndChannelCloseInit",
                     ));
+                    i += 2;
                 }
                 (
                     ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
@@ -218,8 +232,12 @@ impl<'a> RelayerMessage<'a> {
                         &msgs[i..(i + 2)],
                         "updateClientAndChannelCloseConfirm",
                     ));
+                    i += 2;
                 }
-                _ => relayer_msgs.push(RelayerMessage::new_single(current)),
+                _ => {
+                    relayer_msgs.push(RelayerMessage::new_single(current));
+                    i += 1;
+                }
             }
         }
 
