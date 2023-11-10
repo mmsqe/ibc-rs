@@ -92,7 +92,12 @@ impl<'a> RelayerMessage<'a> {
     pub fn from_msgs(msgs: &'a [Any]) -> Vec<RelayerMessage<'a>> {
         let mut relayer_msgs = vec![];
 
-        for i in 0..(msgs.len() - 1) {
+        for i in 0..msgs.len() {
+            if i == msgs.len() - 1 {
+                relayer_msgs.push(RelayerMessage::new_single(&msgs[i]));
+                break;
+            }
+
             let current = &msgs[i];
             let next = &msgs[i + 1];
 
