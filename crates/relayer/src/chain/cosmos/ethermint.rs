@@ -5,9 +5,12 @@ mod sign;
 mod tx;
 mod util;
 
+pub use self::abi::RelayerMessage;
+
 use ibc_proto::google::protobuf::Any;
 use prost::Message;
 use tendermint_rpc::{endpoint::broadcast::tx_sync::Response, HttpClient};
+use tracing::trace;
 
 use crate::{error::Error, keyring::Secp256k1KeyPair};
 
@@ -27,6 +30,8 @@ pub async fn send_txs(
     messages: &[Any],
 ) -> Result<Response, Error> {
     let tx_raw = build_tx_raw(config, key_pair, account, messages).await?;
+
+    trace!("broadcasting transaction: {:?}", tx_raw);
     broadcast_tx_sync(rpc_client, &config.rpc_address, tx_raw.encode_to_vec()).await
 }
 

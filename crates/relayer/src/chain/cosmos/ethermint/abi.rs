@@ -1,6 +1,7 @@
 use alloy_dyn_abi::{DynSolValue, JsonAbiExt};
 use alloy_json_abi::JsonAbi;
 use ibc_proto::google::protobuf::Any;
+use tracing::trace;
 
 use crate::error::Error;
 
@@ -64,8 +65,208 @@ fn get_function_name(msg: &Any) -> Result<&'static str, Error> {
     }
 }
 
+/// A message to be sent to the Ethermint Relayer contract.
+pub enum RelayerMessage<'a> {
+    Single(&'a Any),
+    Combo {
+        msgs: &'a [Any],
+        function_name: &'static str,
+    },
+}
+
+impl<'a> RelayerMessage<'a> {
+    /// Creates a new single message.
+    pub fn new_single(msg: &'a Any) -> Self {
+        Self::Single(msg)
+    }
+
+    /// Creates a new combo message.
+    pub fn new_combo(msgs: &'a [Any], function_name: &'static str) -> Self {
+        Self::Combo {
+            msgs,
+            function_name,
+        }
+    }
+
+    /// Creates relayer messages (with combos if possible) from given messages.
+    pub fn from_msgs(msgs: &'a [Any]) -> Vec<RelayerMessage<'a>> {
+        let mut relayer_msgs = vec![];
+
+        for i in 0..(msgs.len() - 1) {
+            let current = &msgs[i];
+            let next = &msgs[i + 1];
+
+            match (current.type_url.as_str(), next.type_url.as_str()) {
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics03_connection::msgs::conn_open_init::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndConnectionOpenInit",
+                    ));
+                }
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics03_connection::msgs::conn_open_try::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndConnectionOpenTry",
+                    ));
+                }
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics03_connection::msgs::conn_open_ack::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndConnectionOpenAck",
+                    ));
+                }
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics03_connection::msgs::conn_open_confirm::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndConnectionOpenConfirm",
+                    ));
+                }
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics04_channel::msgs::chan_open_init::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndChannelOpenInit",
+                    ));
+                }
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics04_channel::msgs::chan_open_try::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndChannelOpenTry",
+                    ));
+                }
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics04_channel::msgs::chan_open_ack::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndChannelOpenAck",
+                    ));
+                }
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics04_channel::msgs::chan_open_confirm::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndChannelOpenConfirm",
+                    ));
+                }
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics04_channel::msgs::recv_packet::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndRecvPacket",
+                    ));
+                }
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics04_channel::msgs::acknowledgement::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndAcknowledgement",
+                    ));
+                }
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics04_channel::msgs::timeout::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndTimeout",
+                    ));
+                }
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics04_channel::msgs::chan_close_init::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndChannelCloseInit",
+                    ));
+                }
+                (
+                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
+                    ibc_relayer_types::core::ics04_channel::msgs::chan_close_confirm::TYPE_URL,
+                ) => {
+                    relayer_msgs.push(RelayerMessage::new_combo(
+                        &msgs[i..(i + 2)],
+                        "updateClientAndChannelCloseConfirm",
+                    ));
+                }
+                _ => relayer_msgs.push(RelayerMessage::new_single(current)),
+            }
+        }
+
+        relayer_msgs
+    }
+}
+
+/// Packs the given relayer message into bytes.
+pub fn pack_data(relayer_message: RelayerMessage<'_>) -> Result<Vec<u8>, Error> {
+    match relayer_message {
+        RelayerMessage::Single(msg) => pack_msg_data(msg),
+        RelayerMessage::Combo {
+            msgs,
+            function_name,
+        } => pack_combo_data(msgs, function_name),
+    }
+}
+
+/// Packs the given combo messages into bytes.
+pub fn pack_combo_data(msgs: &[Any], function_name: &'static str) -> Result<Vec<u8>, Error> {
+    trace!("packing combo data of type: {}", function_name);
+
+    let abi = get_json_abi();
+
+    let function = abi.function(function_name).ok_or_else(|| {
+        Error::ethermint_error(format!("Function {} not found in ABI", function_name))
+    })?;
+
+    if function.len() != 1 {
+        return Err(Error::ethermint_error(format!(
+            "Function {} has {} overloads",
+            function_name,
+            function.len()
+        )));
+    }
+
+    let function = &function[0];
+
+    let mut args = Vec::with_capacity(msgs.len());
+    for msg in msgs {
+        args.push(DynSolValue::Bytes(msg.value.clone()));
+    }
+
+    function
+        .abi_encode_input(&args)
+        .map_err(|e| Error::abi_error(format!("Failed to encode inputs: {:?}", e)))
+}
+
 /// Packs the given message into bytes.
-pub fn pack_data(msg: &Any) -> Result<Vec<u8>, Error> {
+pub fn pack_msg_data(msg: &Any) -> Result<Vec<u8>, Error> {
+    trace!("packing data of type: {}", msg.type_url);
+
     let function_name = get_function_name(msg)?;
     let abi = get_json_abi();
 

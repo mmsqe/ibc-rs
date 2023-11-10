@@ -19,7 +19,7 @@ use crate::{
 };
 
 use super::{
-    abi::pack_data,
+    abi::{pack_data, RelayerMessage},
     gas::estimate_gas,
     hash::get_transaction_hash,
     sign::sign_dynamic_fee_tx,
@@ -38,7 +38,9 @@ pub async fn build_tx_raw(
 
     let mut transactions = Vec::with_capacity(messages.len());
 
-    for (i, message) in messages.iter().enumerate() {
+    let relayer_messages = RelayerMessage::from_msgs(messages);
+
+    for (i, message) in relayer_messages.into_iter().enumerate() {
         let mut dynamic_fee_tx =
             build_dynamic_fee_tx(message, i, account, key_pair, config).await?;
         sign_dynamic_fee_tx(&mut dynamic_fee_tx, key_pair)?;
@@ -83,7 +85,7 @@ pub async fn build_tx_raw(
 
 /// Builds the `DynamicFeeTx` for the given message.
 async fn build_dynamic_fee_tx(
-    message: &Any,
+    message: RelayerMessage<'_>,
     message_index: usize,
     account: &Account,
     key_pair: &Secp256k1KeyPair,

@@ -1,5 +1,6 @@
 use ibc_proto::ethermint::evm::v1::DynamicFeeTx;
 use serde_json::json;
+use tracing::trace;
 
 use crate::{chain::cosmos::types::config::TxConfig, error::Error, keyring::Secp256k1KeyPair};
 
@@ -19,6 +20,9 @@ pub async fn estimate_gas(
         "gas": gas,
         "input": data,
     }]);
+
+    trace!("estimate gas params: {}", params);
+
     let request = json!({
         "version": "2.0",
         "method": "eth_estimateGas",
@@ -44,7 +48,11 @@ pub async fn estimate_gas(
         .as_str()
         .ok_or_else(|| Error::ethermint_error(format!("invalid estimated gas: {}", response)))?;
 
-    estimated_gas_hex_to_u64(result)
+    let estimated_gas = estimated_gas_hex_to_u64(result)?;
+
+    trace!("estimated gas: {}", estimated_gas);
+
+    Ok(estimated_gas)
 }
 
 /// Converts hex encoded estimated gas to u64
