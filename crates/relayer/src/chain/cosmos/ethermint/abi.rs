@@ -90,6 +90,8 @@ impl<'a> RelayerMessage<'a> {
 
     /// Creates relayer messages (with combos if possible) from given messages.
     pub fn from_msgs(msgs: &'a [Any]) -> Vec<RelayerMessage<'a>> {
+        trace!("creating relayer messages from {:?}", msgs);
+
         let mut relayer_msgs = vec![];
 
         let mut i = 0;
