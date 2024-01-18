@@ -66,6 +66,7 @@ fn get_function_name(msg: &Any) -> Result<&'static str, Error> {
 }
 
 /// A message to be sent to the Ethermint Relayer contract.
+#[derive(Debug)]
 pub enum RelayerMessage<'a> {
     Single(&'a Any),
     Combo {

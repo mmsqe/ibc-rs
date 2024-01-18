@@ -8,6 +8,7 @@ use ibc_proto::{
 };
 use primitive_types::U256;
 use prost::Message;
+use tracing::trace;
 
 use crate::{
     chain::cosmos::{
@@ -39,6 +40,8 @@ pub async fn build_tx_raw(
     let mut transactions = Vec::with_capacity(messages.len());
 
     let relayer_messages = RelayerMessage::from_msgs(messages);
+
+    trace!("relayer messages: {:?}", relayer_messages);
 
     for (i, message) in relayer_messages.into_iter().enumerate() {
         let mut dynamic_fee_tx =
