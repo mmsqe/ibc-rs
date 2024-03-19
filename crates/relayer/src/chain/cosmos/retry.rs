@@ -25,6 +25,8 @@ const ACCOUNT_SEQUENCE_RETRY_DELAY: u64 = 300;
 // The error "incorrect account sequence" is defined as the unique error code 32 in cosmos-sdk:
 // https://github.com/cosmos/cosmos-sdk/blob/v0.44.0/types/errors/errors.go#L115-L117
 const INCORRECT_ACCOUNT_SEQUENCE_ERR: u32 = 32;
+const INVALID_ACCOUNT_SEQUENCE_ERR: u32 = 3;
+
 
 /// Try to `send_tx` and retry on account sequence error with re-cached account s.n.
 /// An account sequence error can occur if the account sequence that
@@ -101,7 +103,7 @@ async fn do_send_tx_with_account_sequence_retry(
         }
 
         // Gas estimation succeeded but broadcast_tx_sync failed with a retry-able error.
-        Ok(ref response) if response.code == Code::from(INCORRECT_ACCOUNT_SEQUENCE_ERR) => {
+        Ok(ref response) if response.code == Code::from(INVALID_ACCOUNT_SEQUENCE_ERR) || response.code == Code::from(INCORRECT_ACCOUNT_SEQUENCE_ERR) => {
             warn!(
                 ?response,
                 "failed to broadcast tx because of a mismatched account sequence number, \

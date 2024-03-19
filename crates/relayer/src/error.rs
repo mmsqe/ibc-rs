@@ -40,6 +40,8 @@ use crate::event::source;
 use crate::keyring::{errors::Error as KeyringError, KeyType};
 use crate::sdk_error::SdkError;
 
+use tracing::debug;
+
 define_error! {
     Error {
         Io
@@ -660,6 +662,7 @@ impl GrpcStatusSubdetail {
     /// there are hermes code changes such that the E < G case is not previously caught anymore,
     /// then this predicate will catch all "account sequence mismatch" errors
     pub fn is_account_sequence_mismatch_that_requires_refresh(&self) -> bool {
+        debug!("mm-msg: {:?}", self.status.message());
         self.status.message().contains("account sequence mismatch")
     }
 
