@@ -103,7 +103,10 @@ async fn do_send_tx_with_account_sequence_retry(
         }
 
         // Gas estimation succeeded but broadcast_tx_sync failed with a retry-able error.
-        Ok(ref response) if response.code == Code::from(INCORRECT_ACCOUNT_SEQUENCE_ERR) || (precompiled && response.code == Code::from(INVALID_ACCOUNT_SEQUENCE_ERR)) => {
+        Ok(ref response)
+            if response.code == Code::from(INCORRECT_ACCOUNT_SEQUENCE_ERR)
+                || (precompiled && response.code == Code::from(INVALID_ACCOUNT_SEQUENCE_ERR)) =>
+        {
             warn!(
                 ?response,
                 "failed to broadcast tx because of a mismatched account sequence number, \
