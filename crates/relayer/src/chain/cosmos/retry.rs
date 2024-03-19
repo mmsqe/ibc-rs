@@ -129,7 +129,10 @@ async fn do_send_tx_with_account_sequence_retry(
                         let relayer_messages = RelayerMessage::from_msgs(messages);
 
                         for _ in 0..relayer_messages.len() {
-                            account.sequence.increment_mut();
+                            if account.sequence.to_u64() < 4 {
+                                account.sequence.increment_mut();
+                            }
+                            debug!("mm-do_send_tx_with_account_sequence_retry account nonce: {:?}", account.sequence);
                         }
                     } else {
                         // Increase account s.n.
