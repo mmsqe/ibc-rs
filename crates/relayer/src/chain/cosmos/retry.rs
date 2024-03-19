@@ -136,7 +136,10 @@ async fn do_send_tx_with_account_sequence_retry(
                         }
                     } else {
                         // Increase account s.n.
-                        account.sequence.increment_mut();
+                        if account.sequence.to_u64() < 4 {
+                            account.sequence.increment_mut();
+                        }
+                        debug!("mm-do_send_tx_with_account_sequence_retry2 account nonce: {:?}", account.sequence);
                     }
 
                     debug!(
