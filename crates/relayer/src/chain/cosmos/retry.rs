@@ -132,7 +132,10 @@ async fn do_send_tx_with_account_sequence_retry(
                     if precompiled {
                         // For each eth message, account sequence is incremented by 1
                         let relayer_messages = RelayerMessage::from_msgs(messages);
-
+                        let total_messages = relayer_messages.len();
+                        if total_messages > 1 {
+                            warn!("total_messages: {:?}", total_messages);
+                        }
                         for _ in 0..relayer_messages.len() {
                             account.sequence.increment_mut();
                         }
