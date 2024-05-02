@@ -8,7 +8,6 @@ use tendermint::abci::Code;
 use tendermint_rpc::endpoint::broadcast::tx_sync::Response;
 use tendermint_rpc::HttpClient;
 
-use crate::chain::cosmos::ethermint::RelayerMessage;
 use crate::chain::cosmos::query::account::refresh_account;
 use crate::chain::cosmos::tx::estimate_fee_and_send_tx;
 use crate::chain::cosmos::types::account::Account;
@@ -124,17 +123,8 @@ async fn do_send_tx_with_account_sequence_retry(
                 Code::Ok => {
                     let old_account_sequence = account.sequence;
 
-                    if let Some(_) = config.precompiled_contract_address {
-                        // For each eth message, account sequence is incremented by 1
-                        let relayer_messages = RelayerMessage::from_msgs(messages);
-
-                        for _ in 0..relayer_messages.len() {
-                            account.sequence.increment_mut();
-                        }
-                    } else {
-                        // Increase account s.n.
-                        account.sequence.increment_mut();
-                    }
+                    // Increase account s.n.
+                    account.sequence.increment_mut();
 
                     debug!(
                         ?response,

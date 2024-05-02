@@ -1,11 +1,10 @@
 mod abi;
+mod batch_call;
 mod gas;
 mod hash;
 mod sign;
 mod tx;
 mod util;
-
-pub use self::abi::RelayerMessage;
 
 use ibc_proto::google::protobuf::Any;
 use prost::Message;

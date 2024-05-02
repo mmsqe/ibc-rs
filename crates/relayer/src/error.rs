@@ -606,6 +606,10 @@ define_error! {
         AbiError
             { detail: String }
             |_| { "abi error" },
+
+        ProstDecodeError
+            { detail: String }
+            |_| { "prost decode error" }
     }
 }
 
