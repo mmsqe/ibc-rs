@@ -289,7 +289,7 @@ fn set_signer(msg: &Any, signer: &str, account_prefix: &str) -> Result<Any, Erro
 }
 
 /// Packs the given message into bytes.
-pub fn pack_msg_data(msg: &Any, signer: &str) -> Result<Vec<u8>, Error> {
+pub fn pack_msg_data(msg: &Any, signer: &str, account_prefix: &str) -> Result<Vec<u8>, Error> {
     trace!("packing data of type: {}", msg.type_url);
 
     let function_name = get_function_name(msg)?;
@@ -307,7 +307,7 @@ pub fn pack_msg_data(msg: &Any, signer: &str) -> Result<Vec<u8>, Error> {
         )));
     }
 
-    let msg = set_signer(msg, signer, "")?;
+    let msg = set_signer(msg, signer, account_prefix)?;
 
     let function = &function[0];
     function
@@ -358,7 +358,11 @@ mod tests {
         };
 
         let data = hex::decode(addr).unwrap();
-        let encoded = bech32::encode("cosmos", data.to_base32(), bech32::Variant::Bech32).unwrap();
+        let encoded = bech32::encode("crc", data.to_base32(), bech32::Variant::Bech32).unwrap();
         println!("{}", encoded);
+
+        let func = get_bech32_address(addr, "crc").unwrap();
+
+        println!("{}", func);
     }
 }

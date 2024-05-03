@@ -92,6 +92,7 @@ async fn build_dynamic_fee_tx(
     tx.data = pack_batch_call_data(
         messages,
         config.precompiled_contract_address.as_ref().unwrap(),
+        &config.account_prefix,
     )?;
     tx.gas_fee_cap = config.gas_config.gas_price.price.to_string();
     tx.gas = config.gas_config.max_gas;

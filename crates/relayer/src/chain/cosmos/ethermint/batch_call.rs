@@ -14,19 +14,23 @@ fn get_json_abi() -> JsonAbi {
     serde_json::from_str(ABI).unwrap()
 }
 
-fn pack_msgs(messages: &[Any], signer: &str) -> Result<Vec<Vec<u8>>, Error> {
+fn pack_msgs(messages: &[Any], signer: &str, account_prefix: &str) -> Result<Vec<Vec<u8>>, Error> {
     let mut packed = Vec::with_capacity(messages.len());
 
     for message in messages {
-        let message_data = pack_msg_data(message, signer)?;
+        let message_data = pack_msg_data(message, signer, account_prefix)?;
         packed.push(message_data);
     }
 
     Ok(packed)
 }
 
-pub fn pack_batch_call_data(messages: &[Any], signer: &str) -> Result<Vec<u8>, Error> {
-    let packed_messages: Vec<_> = pack_msgs(messages, signer)?
+pub fn pack_batch_call_data(
+    messages: &[Any],
+    signer: &str,
+    account_prefix: &str,
+) -> Result<Vec<u8>, Error> {
+    let packed_messages: Vec<_> = pack_msgs(messages, signer, account_prefix)?
         .into_iter()
         .map(|packed_message| DynSolValue::Bytes(packed_message))
         .collect();
