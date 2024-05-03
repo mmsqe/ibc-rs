@@ -48,6 +48,35 @@ pub fn pack_batch_call_data(messages: &[Any], signer: &str) -> Result<Vec<u8>, E
     let function = &function[0];
 
     function
-        .abi_encode_input(packed_messages.as_slice())
+        .abi_encode_input(&[DynSolValue::Array(packed_messages)])
         .map_err(|e| Error::abi_error(format!("Failed to encode inputs: {:?}", e)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_batch_abi() {
+        let abi = get_json_abi();
+
+        let function = abi
+            .function(FUNCTION_NAME)
+            .ok_or_else(|| {
+                Error::ethermint_error(format!("Function {} not found in batch ABI", FUNCTION_NAME))
+            })
+            .unwrap();
+
+        assert_eq!(function.len(), 1);
+        let function = &function[0];
+
+        let packed = function
+            .abi_encode_input(&[DynSolValue::Array(vec![
+                DynSolValue::Bytes(vec![1, 1]),
+                DynSolValue::Bytes(vec![1, 1]),
+            ])])
+            .unwrap();
+
+        println!("{:?}", packed);
+    }
 }
