@@ -595,6 +595,10 @@ define_error! {
             { detail: String }
             |_| { "error decoding bech32 string" },
 
+        ToBech32Error
+            { detail: String }
+            |_| { "error encoding bech32 string" },
+
         KeyringError
             [crate::keyring::errors::Error]
             |_| { "keyring error" },

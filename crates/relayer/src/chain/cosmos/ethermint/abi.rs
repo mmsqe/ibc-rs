@@ -1,5 +1,6 @@
 use alloy_dyn_abi::{DynSolValue, JsonAbiExt};
 use alloy_json_abi::JsonAbi;
+use bech32::ToBase32;
 use ibc_proto::{
     google::protobuf::Any,
     ibc::core::{
@@ -80,13 +81,33 @@ fn get_function_name(msg: &Any) -> Result<&'static str, Error> {
     }
 }
 
+fn get_bech32_address(hex_address: &str, account_prefix: &str) -> Result<String, Error> {
+    let hex_address = if hex_address.starts_with("0x") {
+        hex_address.strip_prefix("0x").unwrap()
+    } else {
+        hex_address
+    };
+
+    let address_bytes =
+        hex::decode(hex_address).map_err(|e| Error::from_hex_error(format!("{:?}", e)))?;
+
+    bech32::encode(
+        account_prefix,
+        address_bytes.to_base32(),
+        bech32::Variant::Bech32,
+    )
+    .map_err(|e| Error::to_bech32_error(format!("{:?}", e)))
+}
+
 #[allow(deprecated)]
-fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
+fn set_signer(msg: &Any, signer: &str, account_prefix: &str) -> Result<Any, Error> {
+    let signer = get_bech32_address(signer, account_prefix)?;
+
     match msg.type_url.as_str() {
         ibc_relayer_types::core::ics02_client::msgs::create_client::TYPE_URL => {
             let mut message: MsgCreateClient = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -96,7 +117,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL => {
             let mut message: MsgUpdateClient = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -106,7 +127,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics02_client::msgs::upgrade_client::TYPE_URL => {
             let mut message: MsgUpgradeClient = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -116,7 +137,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics02_client::msgs::misbehaviour::TYPE_URL => {
             let mut message: MsgSubmitMisbehaviour = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -126,7 +147,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics03_connection::msgs::conn_open_init::TYPE_URL => {
             let mut message: MsgConnectionOpenInit = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -136,7 +157,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics03_connection::msgs::conn_open_try::TYPE_URL => {
             let mut message: MsgConnectionOpenTry = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -146,7 +167,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics03_connection::msgs::conn_open_ack::TYPE_URL => {
             let mut message: MsgConnectionOpenAck = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -156,7 +177,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics03_connection::msgs::conn_open_confirm::TYPE_URL => {
             let mut message: MsgConnectionOpenConfirm = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -166,7 +187,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics04_channel::msgs::chan_open_init::TYPE_URL => {
             let mut message: MsgChannelOpenInit = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -176,7 +197,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics04_channel::msgs::chan_open_try::TYPE_URL => {
             let mut message: MsgChannelOpenTry = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -186,7 +207,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics04_channel::msgs::chan_open_ack::TYPE_URL => {
             let mut message: MsgChannelOpenAck = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -196,7 +217,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics04_channel::msgs::chan_open_confirm::TYPE_URL => {
             let mut message: MsgChannelOpenConfirm = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -206,7 +227,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics04_channel::msgs::chan_close_init::TYPE_URL => {
             let mut message: MsgChannelCloseInit = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -216,7 +237,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics04_channel::msgs::chan_close_confirm::TYPE_URL => {
             let mut message: MsgChannelCloseConfirm = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -226,7 +247,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics04_channel::msgs::recv_packet::TYPE_URL => {
             let mut message: MsgRecvPacket = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -236,7 +257,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics04_channel::msgs::acknowledgement::TYPE_URL => {
             let mut message: MsgAcknowledgement = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -246,7 +267,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics04_channel::msgs::timeout::TYPE_URL => {
             let mut message: MsgTimeout = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -256,7 +277,7 @@ fn set_signer(msg: &Any, signer: &str) -> Result<Any, Error> {
         ibc_relayer_types::core::ics04_channel::msgs::timeout_on_close::TYPE_URL => {
             let mut message: MsgTimeoutOnClose = Message::decode(msg.value.as_ref())
                 .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
-            message.signer = signer.to_owned();
+            message.signer = signer;
 
             Ok(Any {
                 type_url: msg.type_url.to_owned(),
@@ -286,7 +307,7 @@ pub fn pack_msg_data(msg: &Any, signer: &str) -> Result<Vec<u8>, Error> {
         )));
     }
 
-    let msg = set_signer(msg, signer)?;
+    let msg = set_signer(msg, signer, "")?;
 
     let function = &function[0];
     function
@@ -297,6 +318,7 @@ pub fn pack_msg_data(msg: &Any, signer: &str) -> Result<Vec<u8>, Error> {
 #[cfg(test)]
 mod tests {
     use alloy_dyn_abi::{DynSolValue, JsonAbiExt};
+    use bech32::ToBase32;
 
     use super::*;
 
@@ -323,5 +345,20 @@ mod tests {
         ];
 
         assert_eq!(encoded, expected);
+    }
+
+    #[test]
+    fn test_bech_32() {
+        let addr = "0x6F1805D56bF05b7be10857F376A5b1c160C8f72C";
+
+        let addr = if addr.starts_with("0x") {
+            addr.strip_prefix("0x").unwrap()
+        } else {
+            addr
+        };
+
+        let data = hex::decode(addr).unwrap();
+        let encoded = bech32::encode("cosmos", data.to_base32(), bech32::Variant::Bech32).unwrap();
+        println!("{}", encoded);
     }
 }
