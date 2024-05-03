@@ -9,7 +9,7 @@ mod util;
 use ibc_proto::google::protobuf::Any;
 use prost::Message;
 use tendermint_rpc::{endpoint::broadcast::tx_sync::Response, HttpClient};
-use tracing::trace;
+use tracing::{debug, trace};
 
 use crate::{error::Error, keyring::Secp256k1KeyPair};
 
@@ -31,7 +31,12 @@ pub async fn send_txs(
     let tx_raw = build_tx_raw(config, key_pair, account, messages).await?;
 
     trace!("broadcasting transaction: {:?}", tx_raw);
-    broadcast_tx_sync(rpc_client, &config.rpc_address, tx_raw.encode_to_vec()).await
+    let response =
+        broadcast_tx_sync(rpc_client, &config.rpc_address, tx_raw.encode_to_vec()).await?;
+
+    debug!("ethermint response: {:?}", response);
+
+    Ok(response)
 }
 
 #[cfg(test)]
