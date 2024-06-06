@@ -17,6 +17,7 @@ use crate::event::IbcEventWithHeight;
 use crate::keyring::{Secp256k1KeyPair, SigningKeyPair};
 
 use super::batch::send_batched_messages_and_wait_commit;
+use tracing::trace;
 
 pub async fn estimate_fee_and_send_tx(
     rpc_client: &HttpClient,
@@ -26,6 +27,11 @@ pub async fn estimate_fee_and_send_tx(
     tx_memo: &Memo,
     messages: &[Any],
 ) -> Result<Response, Error> {
+    trace!("mm-nonce-estimate_fee_and_send_tx: {:?}, {:?}", account.address, account.sequence);
+    let key_account = key_pair.account();
+    let acc = query_account(&config.grpc_address, &key_account)
+        .await?;
+    trace!("mm-nonce-estimate_fee_and_send_tx-query_account: {:?}, {:?}", account.address, acc.sequence);
     if let Some(_) = config.precompiled_contract_address {
         return super::ethermint::send_txs(rpc_client, config, key_pair, account, messages).await;
     }
