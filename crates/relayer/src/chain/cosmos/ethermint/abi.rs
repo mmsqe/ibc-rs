@@ -1,6 +1,22 @@
 use alloy_dyn_abi::{DynSolValue, JsonAbiExt};
 use alloy_json_abi::JsonAbi;
-use ibc_proto::google::protobuf::Any;
+use bech32::ToBase32;
+use ibc_proto::{
+    google::protobuf::Any,
+    ibc::core::{
+        channel::v1::{
+            MsgAcknowledgement, MsgChannelCloseConfirm, MsgChannelCloseInit, MsgChannelOpenAck,
+            MsgChannelOpenConfirm, MsgChannelOpenInit, MsgChannelOpenTry, MsgRecvPacket,
+            MsgTimeout, MsgTimeoutOnClose,
+        },
+        client::v1::{MsgCreateClient, MsgSubmitMisbehaviour, MsgUpdateClient, MsgUpgradeClient},
+        connection::v1::{
+            MsgConnectionOpenAck, MsgConnectionOpenConfirm, MsgConnectionOpenInit,
+            MsgConnectionOpenTry,
+        },
+    },
+};
+use prost::Message;
 use tracing::trace;
 
 use crate::error::Error;
@@ -65,232 +81,215 @@ fn get_function_name(msg: &Any) -> Result<&'static str, Error> {
     }
 }
 
-/// A message to be sent to the Ethermint Relayer contract.
-#[derive(Debug)]
-pub enum RelayerMessage<'a> {
-    Single(&'a Any),
-    Combo {
-        msgs: &'a [Any],
-        function_name: &'static str,
-    },
+fn get_bech32_address(hex_address: &str, account_prefix: &str) -> Result<String, Error> {
+    let hex_address = if hex_address.starts_with("0x") {
+        hex_address.strip_prefix("0x").unwrap()
+    } else {
+        hex_address
+    };
+
+    let address_bytes =
+        hex::decode(hex_address).map_err(|e| Error::from_hex_error(format!("{:?}", e)))?;
+
+    bech32::encode(
+        account_prefix,
+        address_bytes.to_base32(),
+        bech32::Variant::Bech32,
+    )
+    .map_err(|e| Error::to_bech32_error(format!("{:?}", e)))
 }
 
-impl<'a> RelayerMessage<'a> {
-    /// Creates a new single message.
-    pub fn new_single(msg: &'a Any) -> Self {
-        Self::Single(msg)
-    }
+#[allow(deprecated)]
+fn set_signer(msg: &Any, signer: &str, account_prefix: &str) -> Result<Any, Error> {
+    let signer = get_bech32_address(signer, account_prefix)?;
 
-    /// Creates a new combo message.
-    pub fn new_combo(msgs: &'a [Any], function_name: &'static str) -> Self {
-        Self::Combo {
-            msgs,
-            function_name,
+    match msg.type_url.as_str() {
+        ibc_relayer_types::core::ics02_client::msgs::create_client::TYPE_URL => {
+            let mut message: MsgCreateClient = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
         }
-    }
+        ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL => {
+            let mut message: MsgUpdateClient = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
 
-    /// Creates relayer messages (with combos if possible) from given messages.
-    pub fn from_msgs(msgs: &'a [Any]) -> Vec<RelayerMessage<'a>> {
-        trace!("creating relayer messages from {:?}", msgs);
-
-        let mut relayer_msgs = vec![];
-
-        let mut i = 0;
-
-        while i < msgs.len() {
-            if i == msgs.len() - 1 {
-                relayer_msgs.push(RelayerMessage::new_single(&msgs[i]));
-                break;
-            }
-
-            let current = &msgs[i];
-            let next = &msgs[i + 1];
-
-            match (current.type_url.as_str(), next.type_url.as_str()) {
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics03_connection::msgs::conn_open_init::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndConnectionOpenInit",
-                    ));
-                    i += 2;
-                }
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics03_connection::msgs::conn_open_try::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndConnectionOpenTry",
-                    ));
-                    i += 2;
-                }
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics03_connection::msgs::conn_open_ack::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndConnectionOpenAck",
-                    ));
-                    i += 2;
-                }
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics03_connection::msgs::conn_open_confirm::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndConnectionOpenConfirm",
-                    ));
-                    i += 2;
-                }
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics04_channel::msgs::chan_open_init::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndChannelOpenInit",
-                    ));
-                    i += 2;
-                }
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics04_channel::msgs::chan_open_try::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndChannelOpenTry",
-                    ));
-                    i += 2;
-                }
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics04_channel::msgs::chan_open_ack::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndChannelOpenAck",
-                    ));
-                    i += 2;
-                }
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics04_channel::msgs::chan_open_confirm::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndChannelOpenConfirm",
-                    ));
-                    i += 2;
-                }
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics04_channel::msgs::recv_packet::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndRecvPacket",
-                    ));
-                    i += 2;
-                }
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics04_channel::msgs::acknowledgement::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndAcknowledgement",
-                    ));
-                    i += 2;
-                }
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics04_channel::msgs::timeout::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndTimeout",
-                    ));
-                    i += 2;
-                }
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics04_channel::msgs::chan_close_init::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndChannelCloseInit",
-                    ));
-                    i += 2;
-                }
-                (
-                    ibc_relayer_types::core::ics02_client::msgs::update_client::TYPE_URL,
-                    ibc_relayer_types::core::ics04_channel::msgs::chan_close_confirm::TYPE_URL,
-                ) => {
-                    relayer_msgs.push(RelayerMessage::new_combo(
-                        &msgs[i..(i + 2)],
-                        "updateClientAndChannelCloseConfirm",
-                    ));
-                    i += 2;
-                }
-                _ => {
-                    relayer_msgs.push(RelayerMessage::new_single(current));
-                    i += 1;
-                }
-            }
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
         }
+        ibc_relayer_types::core::ics02_client::msgs::upgrade_client::TYPE_URL => {
+            let mut message: MsgUpgradeClient = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
 
-        relayer_msgs
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics02_client::msgs::misbehaviour::TYPE_URL => {
+            let mut message: MsgSubmitMisbehaviour = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics03_connection::msgs::conn_open_init::TYPE_URL => {
+            let mut message: MsgConnectionOpenInit = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics03_connection::msgs::conn_open_try::TYPE_URL => {
+            let mut message: MsgConnectionOpenTry = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics03_connection::msgs::conn_open_ack::TYPE_URL => {
+            let mut message: MsgConnectionOpenAck = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics03_connection::msgs::conn_open_confirm::TYPE_URL => {
+            let mut message: MsgConnectionOpenConfirm = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics04_channel::msgs::chan_open_init::TYPE_URL => {
+            let mut message: MsgChannelOpenInit = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics04_channel::msgs::chan_open_try::TYPE_URL => {
+            let mut message: MsgChannelOpenTry = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics04_channel::msgs::chan_open_ack::TYPE_URL => {
+            let mut message: MsgChannelOpenAck = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics04_channel::msgs::chan_open_confirm::TYPE_URL => {
+            let mut message: MsgChannelOpenConfirm = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics04_channel::msgs::chan_close_init::TYPE_URL => {
+            let mut message: MsgChannelCloseInit = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics04_channel::msgs::chan_close_confirm::TYPE_URL => {
+            let mut message: MsgChannelCloseConfirm = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics04_channel::msgs::recv_packet::TYPE_URL => {
+            let mut message: MsgRecvPacket = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics04_channel::msgs::acknowledgement::TYPE_URL => {
+            let mut message: MsgAcknowledgement = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics04_channel::msgs::timeout::TYPE_URL => {
+            let mut message: MsgTimeout = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        ibc_relayer_types::core::ics04_channel::msgs::timeout_on_close::TYPE_URL => {
+            let mut message: MsgTimeoutOnClose = Message::decode(msg.value.as_ref())
+                .map_err(|err| Error::prost_decode_error(format!("{:?}", err)))?;
+            message.signer = signer;
+
+            Ok(Any {
+                type_url: msg.type_url.to_owned(),
+                value: message.encode_to_vec(),
+            })
+        }
+        _ => Err(Error::ethermint_error("Unknown message type".to_string())),
     }
-}
-
-/// Packs the given relayer message into bytes.
-pub fn pack_data(relayer_message: RelayerMessage<'_>) -> Result<Vec<u8>, Error> {
-    match relayer_message {
-        RelayerMessage::Single(msg) => pack_msg_data(msg),
-        RelayerMessage::Combo {
-            msgs,
-            function_name,
-        } => pack_combo_data(msgs, function_name),
-    }
-}
-
-/// Packs the given combo messages into bytes.
-pub fn pack_combo_data(msgs: &[Any], function_name: &'static str) -> Result<Vec<u8>, Error> {
-    trace!("packing combo data of type: {}", function_name);
-
-    let abi = get_json_abi();
-
-    let function = abi.function(function_name).ok_or_else(|| {
-        Error::ethermint_error(format!("Function {} not found in ABI", function_name))
-    })?;
-
-    if function.len() != 1 {
-        return Err(Error::ethermint_error(format!(
-            "Function {} has {} overloads",
-            function_name,
-            function.len()
-        )));
-    }
-
-    let function = &function[0];
-
-    let mut args = Vec::with_capacity(msgs.len());
-    for msg in msgs {
-        args.push(DynSolValue::Bytes(msg.value.clone()));
-    }
-
-    function
-        .abi_encode_input(&args)
-        .map_err(|e| Error::abi_error(format!("Failed to encode inputs: {:?}", e)))
 }
 
 /// Packs the given message into bytes.
-pub fn pack_msg_data(msg: &Any) -> Result<Vec<u8>, Error> {
+pub fn pack_msg_data(msg: &Any, signer: &str, account_prefix: &str) -> Result<Vec<u8>, Error> {
     trace!("packing data of type: {}", msg.type_url);
 
     let function_name = get_function_name(msg)?;
@@ -308,15 +307,18 @@ pub fn pack_msg_data(msg: &Any) -> Result<Vec<u8>, Error> {
         )));
     }
 
+    let msg = set_signer(msg, signer, account_prefix)?;
+
     let function = &function[0];
     function
-        .abi_encode_input(&[DynSolValue::Bytes(msg.value.clone())])
+        .abi_encode_input(&[DynSolValue::Bytes(msg.value)])
         .map_err(|e| Error::abi_error(format!("Failed to encode inputs: {:?}", e)))
 }
 
 #[cfg(test)]
 mod tests {
     use alloy_dyn_abi::{DynSolValue, JsonAbiExt};
+    use bech32::ToBase32;
 
     use super::*;
 
@@ -343,5 +345,24 @@ mod tests {
         ];
 
         assert_eq!(encoded, expected);
+    }
+
+    #[test]
+    fn test_bech_32() {
+        let addr = "0x6F1805D56bF05b7be10857F376A5b1c160C8f72C";
+
+        let addr = if addr.starts_with("0x") {
+            addr.strip_prefix("0x").unwrap()
+        } else {
+            addr
+        };
+
+        let data = hex::decode(addr).unwrap();
+        let encoded = bech32::encode("crc", data.to_base32(), bech32::Variant::Bech32).unwrap();
+        println!("{}", encoded);
+
+        let func = get_bech32_address(addr, "crc").unwrap();
+
+        println!("{}", func);
     }
 }
