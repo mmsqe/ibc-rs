@@ -66,6 +66,9 @@ pub fn new_tx_config_for_test(
     let max_msg_num = Default::default();
     let max_tx_size = Default::default();
     let extension_options = Default::default();
+    let precompiled_contract_address = Default::default();
+    let json_rpc_address = Default::default();
+    let account_prefix = "cosmos".to_owned();
 
     Ok(TxConfig {
         chain_id,
@@ -77,5 +80,8 @@ pub fn new_tx_config_for_test(
         max_msg_num,
         max_tx_size,
         extension_options,
+        precompiled_contract_address,
+        json_rpc_address,
+        account_prefix,
     })
 }

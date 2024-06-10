@@ -22,6 +22,9 @@ pub struct TxConfig {
     pub max_msg_num: MaxMsgNum,
     pub max_tx_size: MaxTxSize,
     pub extension_options: Vec<Any>,
+    pub precompiled_contract_address: Option<String>,
+    pub json_rpc_address: Option<Url>,
+    pub account_prefix: String,
 }
 
 impl<'a> TryFrom<&'a CosmosSdkConfig> for TxConfig {
@@ -49,6 +52,9 @@ impl<'a> TryFrom<&'a CosmosSdkConfig> for TxConfig {
             max_msg_num: config.max_msg_num,
             max_tx_size: config.max_tx_size,
             extension_options,
+            precompiled_contract_address: config.precompiled_contract_address.clone(),
+            json_rpc_address: config.json_rpc_address.clone(),
+            account_prefix: config.account_prefix.clone(),
         })
     }
 }

@@ -630,6 +630,38 @@ define_error! {
         InvalidChannelString
             { channel: String }
             |e| { format!("invalid channel string {}", e.channel) },
+
+            EthermintError
+            { detail: String }
+            |e| { format!("ethermint error: {}", e.detail) },
+
+        FromHexError
+            { detail: String }
+            |_| { "error decoding hex string" },
+
+        FromBech32Error
+            { detail: String }
+            |_| { "error decoding bech32 string" },
+
+        ToBech32Error
+            { detail: String }
+            |_| { "error encoding bech32 string" },
+
+        KeyringError
+            [crate::keyring::errors::Error]
+            |_| { "keyring error" },
+
+        ReqwestError
+            { detail: String }
+            |_| { "reqwest error" },
+
+        AbiError
+            { detail: String }
+            |_| { "abi error" },
+
+        ProstDecodeError
+            { detail: String }
+            |_| { "prost decode error" }
     }
 }
 

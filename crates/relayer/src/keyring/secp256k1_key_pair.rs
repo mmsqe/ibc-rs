@@ -317,3 +317,21 @@ impl SigningKeyPair for Secp256k1KeyPair {
         self
     }
 }
+
+impl Secp256k1KeyPair {
+    /// Signs a pre-hashed message using the private key and returns recovery_id and signature.
+    pub fn sign_recoverable_prehashed(&self, hash: [u8; 32]) -> Result<(i32, [u8; 64]), Error> {
+        let message = Message::from_digest_slice(&hash[..]).unwrap();
+
+        let (recovery_id, signature) = Secp256k1::signing_only()
+            .sign_ecdsa_recoverable(&message, &self.private_key)
+            .serialize_compact();
+
+        Ok((recovery_id.to_i32(), signature))
+    }
+
+    /// Returns address of keypair.
+    pub fn address(&self) -> [u8; 20] {
+        self.address
+    }
+}

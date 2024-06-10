@@ -168,6 +168,8 @@ where
         compat_mode: None,
         clear_interval: None,
         excluded_sequences: BTreeMap::new(),
+        precompiled_contract_address: None,
+        json_rpc_address: None,
     }))
 }
 

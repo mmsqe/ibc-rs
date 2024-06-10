@@ -150,6 +150,10 @@ pub struct CosmosSdkConfig {
     pub clear_interval: Option<u64>,
     #[serde(default)]
     pub excluded_sequences: BTreeMap<ChannelId, Vec<Sequence>>,
+    #[serde(default)]
+    pub precompiled_contract_address: Option<String>,
+    #[serde(default)]
+    pub json_rpc_address: Option<Url>,
 }
 
 impl CosmosSdkConfig {

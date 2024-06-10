@@ -132,6 +132,7 @@ pub mod tx;
 pub mod types;
 pub mod version;
 pub mod wait;
+pub mod ethermint;
 
 /// Defines an upper limit on how large any transaction can be.
 /// This upper limit is defined as a fraction relative to the block's
