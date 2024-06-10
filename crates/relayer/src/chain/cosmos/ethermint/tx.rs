@@ -8,7 +8,6 @@ use ibc_proto::{
 };
 use primitive_types::U256;
 use prost::Message;
-use tracing::trace;
 
 use crate::{
     chain::cosmos::{
@@ -20,7 +19,7 @@ use crate::{
 };
 
 use super::{
-    abi::{pack_data, RelayerMessage},
+    batch_call::pack_batch_call_data,
     gas::estimate_gas,
     hash::get_transaction_hash,
     sign::sign_dynamic_fee_tx,
@@ -34,31 +33,14 @@ pub async fn build_tx_raw(
     account: &Account,
     messages: &[Any],
 ) -> Result<TxRaw, Error> {
-    let mut gas_limit = 0;
-    let mut fee = U256::zero();
+    let mut dynamic_fee_tx = build_dynamic_fee_tx(messages, account, key_pair, config).await?;
+    sign_dynamic_fee_tx(&mut dynamic_fee_tx, key_pair)?;
 
-    let mut transactions = Vec::with_capacity(messages.len());
-
-    let relayer_messages = RelayerMessage::from_msgs(messages);
-
-    trace!("relayer messages: {:?}", relayer_messages);
-
-    for (i, message) in relayer_messages.into_iter().enumerate() {
-        let mut dynamic_fee_tx =
-            build_dynamic_fee_tx(message, i, account, key_pair, config).await?;
-        sign_dynamic_fee_tx(&mut dynamic_fee_tx, key_pair)?;
-
-        let eth_tx = build_ethereum_tx(&dynamic_fee_tx, key_pair)?;
-        let eth_tx_any = get_ethereum_tx_any(&eth_tx);
-
-        gas_limit += dynamic_fee_tx.gas;
-        fee += U256::from_dec_str(&dynamic_fee_tx.gas_fee_cap).unwrap() * dynamic_fee_tx.gas;
-
-        transactions.push(eth_tx_any);
-    }
+    let eth_tx = build_ethereum_tx(&dynamic_fee_tx, key_pair)?;
+    let eth_tx_any = get_ethereum_tx_any(&eth_tx);
 
     let tx_body = TxBody {
-        messages: transactions,
+        messages: vec![eth_tx_any],
         memo: "".to_string(),
         timeout_height: 0,
         extension_options: get_evm_extension_options(),
@@ -70,9 +52,11 @@ pub async fn build_tx_raw(
         fee: Some(Fee {
             amount: vec![Coin {
                 denom: config.gas_config.gas_price.denom.clone(),
-                amount: fee.to_string(),
+                amount: (U256::from_dec_str(&dynamic_fee_tx.gas_fee_cap).unwrap()
+                    * dynamic_fee_tx.gas)
+                    .to_string(),
             }],
-            gas_limit,
+            gas_limit: dynamic_fee_tx.gas,
             payer: "".to_string(),
             granter: "".to_string(),
         }),
@@ -88,13 +72,12 @@ pub async fn build_tx_raw(
 
 /// Builds the `DynamicFeeTx` for the given message.
 async fn build_dynamic_fee_tx(
-    message: RelayerMessage<'_>,
-    message_index: usize,
+    messages: &[Any],
     account: &Account,
     key_pair: &Secp256k1KeyPair,
     config: &TxConfig,
 ) -> Result<DynamicFeeTx, Error> {
-    let nonce = account.sequence.to_u64() + message_index as u64;
+    let nonce = account.sequence.to_u64();
 
     let mut tx = DynamicFeeTx::default();
 
@@ -106,7 +89,11 @@ async fn build_dynamic_fee_tx(
         .unwrap()
         .clone();
     tx.value = "0".to_string();
-    tx.data = pack_data(message)?;
+    tx.data = pack_batch_call_data(
+        messages,
+        config.precompiled_contract_address.as_ref().unwrap(),
+        &config.account_prefix,
+    )?;
     tx.gas_fee_cap = config.gas_config.gas_price.price.to_string();
     tx.gas = config.gas_config.max_gas;
     tx.accesses = Vec::new();

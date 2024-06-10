@@ -23,6 +23,7 @@ pub struct TxConfig {
     pub extension_options: Vec<Any>,
     pub precompiled_contract_address: Option<String>,
     pub json_rpc_address: Option<Url>,
+    pub account_prefix: String,
 }
 
 impl<'a> TryFrom<&'a ChainConfig> for TxConfig {
@@ -52,6 +53,7 @@ impl<'a> TryFrom<&'a ChainConfig> for TxConfig {
             extension_options,
             precompiled_contract_address: config.precompiled_contract_address.clone(),
             json_rpc_address: config.json_rpc_address.clone(),
+            account_prefix: config.account_prefix.clone(),
         })
     }
 }
