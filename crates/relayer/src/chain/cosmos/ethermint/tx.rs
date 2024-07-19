@@ -116,6 +116,14 @@ async fn build_dynamic_fee_tx(
                     gas_amount: estimated_gas,
                 });
 
+                if adjusted_gas > config.gas_config.max_gas {
+                    return Err(Error::tx_simulate_gas_estimate_exceeded(
+                        config.chain_id.clone(),
+                        adjusted_gas,
+                        config.gas_config.max_gas,
+                    ));
+                }
+
                 tx.gas = adjusted_gas;
 
                 Ok((tx, EstimatedGas::Simulated(adjusted_gas)))
