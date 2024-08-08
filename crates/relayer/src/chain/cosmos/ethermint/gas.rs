@@ -13,12 +13,14 @@ pub async fn estimate_gas(
     let from = format!("0x{}", hex::encode(key_pair.address()));
     let gas = format!("0x{:x}", dynamic_fee_tx.gas);
     let data = format!("0x{}", hex::encode(&dynamic_fee_tx.data));
+    let nonce = format!("0x{:x}", dynamic_fee_tx.nonce);
 
     let params = json!([{
         "from": from,
         "to": dynamic_fee_tx.to,
         "gas": gas,
         "input": data,
+        "nonce": nonce,
     }]);
 
     trace!("estimate gas params: {}", params);
