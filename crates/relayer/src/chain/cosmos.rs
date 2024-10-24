@@ -123,6 +123,7 @@ pub mod config;
 pub mod eip_base_fee;
 pub mod encode;
 pub mod estimate;
+pub mod ethermint;
 pub mod fee;
 pub mod gas;
 pub mod query;
@@ -132,7 +133,6 @@ pub mod tx;
 pub mod types;
 pub mod version;
 pub mod wait;
-pub mod ethermint;
 
 /// Defines an upper limit on how large any transaction can be.
 /// This upper limit is defined as a fraction relative to the block's
