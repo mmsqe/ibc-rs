@@ -452,13 +452,13 @@ mod tests {
         };
 
         let data = hex::decode(addr).unwrap();
-        const prefix: &str = "crc";
-        let encoded = bech32::encode(prefix, data.to_base32(), bech32::Variant::Bech32).unwrap();
+        const PREFIX: &str = "crc";
+        let encoded = bech32::encode(PREFIX, data.to_base32(), bech32::Variant::Bech32).unwrap();
         println!("{}", encoded);
 
-        let func = get_bech32_address(addr, prefix).unwrap();
+        let func = get_bech32_address(addr, PREFIX).unwrap();
         println!("get_bech32_address: {}", func);
-        let func = get_hex_address(&func, prefix).unwrap();
+        let func = get_hex_address(&func, PREFIX).unwrap();
         println!("get_hex_address: {}", func);
         println!("checksum: {}", checksum(func.as_str()));
     }
