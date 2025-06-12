@@ -97,7 +97,7 @@ impl TestOverrides for DynamicGasTest {
                 chain_config_b.gas_multiplier = Some(GasMultiplier::unsafe_new(1.8));
 
                 chain_config_b.dynamic_gas_price =
-                    DynamicGasPrice::unsafe_new(self.dynamic_gas_enabled, 1.1, 0.6);
+                    DynamicGasPrice::unsafe_new(self.dynamic_gas_enabled, 1.1, 0.6, None);
             }
         }
     }
