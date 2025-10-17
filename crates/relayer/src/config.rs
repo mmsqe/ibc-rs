@@ -134,7 +134,7 @@ impl ExtensionOption {
             Self::CosmosEvmDynamicFee(max_priority_price) => ExtensionOptionDynamicFeeTx {
                 max_priority_price: max_priority_price.into(),
             }
-            .to_any("/cosmos.evm.types.v1.ExtensionOptionDynamicFeeTx"),
+            .to_any("/cosmos.evm.ante.v1.ExtensionOptionDynamicFeeTx"),
         }
     }
 }
