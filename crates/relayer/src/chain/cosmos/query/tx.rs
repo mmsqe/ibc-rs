@@ -18,7 +18,10 @@ use crate::error::Error;
 use crate::event::{ibc_event_try_from_abci_event, IbcEventWithHeight};
 
 pub(crate) fn is_missing_event_attributes_rpc_error(error: &RpcError) -> bool {
-    let msg = error.to_string();
+    is_missing_event_attributes_error_message(&error.to_string())
+}
+
+fn is_missing_event_attributes_error_message(msg: &str) -> bool {
     msg.contains("serde parse error") && msg.contains("missing field `attributes`")
 }
 
@@ -423,5 +426,33 @@ pub fn all_ibc_events_from_tx_search_response(
             .collect::<Vec<_>>();
 
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_missing_event_attributes_error_message;
+
+    #[test]
+    fn matches_only_missing_attributes_serde_error() {
+        let cases = [
+            (
+                "serde parse error: missing field `attributes`",
+                true,
+            ),
+            (
+                "serde parse error: missing field `events`",
+                false,
+            ),
+            ("tcp connect timeout", false),
+        ];
+
+        for (message, expected) in cases {
+            assert_eq!(
+                is_missing_event_attributes_error_message(message),
+                expected,
+                "unexpected match result for message: {message}"
+            );
+        }
     }
 }
