@@ -86,7 +86,8 @@ use crate::chain::cosmos::query::denom_trace::query_denom_trace;
 use crate::chain::cosmos::query::fee::query_incentivized_packet;
 use crate::chain::cosmos::query::status::query_status;
 use crate::chain::cosmos::query::tx::{
-    filter_matching_event, query_packets_from_block, query_packets_from_txs, query_txs,
+    filter_matching_event, is_missing_event_attributes_rpc_error, query_packets_from_block,
+    query_packets_from_txs, query_txs,
 };
 use crate::chain::cosmos::query::{abci_query, fetch_version_specs, packet_query, QueryResponse};
 use crate::chain::cosmos::types::account::Account;
@@ -797,9 +798,17 @@ impl CosmosSdkChain {
         let tm_height =
             tendermint::block::Height::try_from(block_height.revision_height()).unwrap();
 
-        let response = self
-            .block_on(self.rpc_client.block_results(tm_height))
-            .map_err(|e| Error::rpc(self.config.rpc_addr.clone(), e))?;
+        let response = match self.block_on(self.rpc_client.block_results(tm_height)) {
+            Ok(response) => response,
+            Err(e) if is_missing_event_attributes_rpc_error(&e) => {
+                warn!(
+                    "skipping malformed block_results response at height {}: {}",
+                    tm_height, e
+                );
+                return Ok(Default::default());
+            }
+            Err(e) => return Err(Error::rpc(self.config.rpc_addr.clone(), e)),
+        };
 
         let response_height = ICSHeight::new(self.id().version(), u64::from(response.height))
             .map_err(|_| Error::invalid_height_no_source())?;
@@ -851,8 +860,7 @@ impl CosmosSdkChain {
         let mut end_block_events = vec![];
 
         for seq in request.sequences.iter().copied() {
-            let response = self
-                .block_on(self.rpc_client.block_search(
+            let response = match self.block_on(self.rpc_client.block_search(
                     packet_query(request, seq),
                     // We only need the first page
                     1,
@@ -869,8 +877,17 @@ impl CosmosSdkChain {
                     // much any height relative to the target blocks, so we went with most recent
                     // blocks first.
                     Order::Descending,
-                ))
-                .map_err(|e| Error::rpc(self.config.rpc_addr.clone(), e))?;
+                )) {
+                Ok(response) => response,
+                Err(e) if is_missing_event_attributes_rpc_error(&e) => {
+                    warn!(
+                        "skipping malformed block_search response for sequence {}: {}",
+                        seq, e
+                    );
+                    continue;
+                }
+                Err(e) => return Err(Error::rpc(self.config.rpc_addr.clone(), e)),
+            };
 
             for block in response.blocks.into_iter().map(|response| response.block) {
                 let response_height =

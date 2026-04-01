@@ -6,7 +6,7 @@ use ibc_relayer_types::Height as ICSHeight;
 use tendermint::abci::Event;
 use tendermint::Hash as TxHash;
 use tendermint_rpc::endpoint::tx::Response as TxResponse;
-use tendermint_rpc::{Client, HttpClient, Order, Url};
+use tendermint_rpc::{Client, Error as RpcError, HttpClient, Order, Url};
 use tracing::warn;
 
 use crate::chain::cosmos::query::{header_query, packet_query, tx_hash_query};
@@ -16,6 +16,14 @@ use crate::chain::requests::{
 };
 use crate::error::Error;
 use crate::event::{ibc_event_try_from_abci_event, IbcEventWithHeight};
+
+pub(crate) fn is_missing_event_attributes_rpc_error(error: &RpcError) -> bool {
+    is_missing_event_attributes_error_message(&error.to_string())
+}
+
+fn is_missing_event_attributes_error_message(msg: &str) -> bool {
+    msg.contains("serde parse error") && msg.contains("missing field `attributes`")
+}
 
 /// This function queries transactions for events matching certain criteria.
 /// 1. Client Update request - returns a vector with at most one update client event
@@ -130,10 +138,20 @@ pub async fn query_packets_from_txs(
 
     for seq in &request.sequences {
         // Query the latest 10 txs which include the event specified in the query request
-        let response = rpc_client
+        let response = match rpc_client
             .tx_search(packet_query(request, *seq), false, 1, 10, Order::Descending)
             .await
-            .map_err(|e| Error::rpc(rpc_address.clone(), e))?;
+        {
+            Ok(response) => response,
+            Err(e) if is_missing_event_attributes_rpc_error(&e) => {
+                warn!(
+                    "skipping malformed tx_search response for packet sequence {}: {}",
+                    seq, e
+                );
+                continue;
+            }
+            Err(e) => return Err(Error::rpc(rpc_address.clone(), e)),
+        };
 
         if response.txs.is_empty() {
             continue;
@@ -199,10 +217,17 @@ pub async fn query_packets_from_block(
     let height = Height::new(chain_id.version(), u64::from(tm_height))
         .map_err(|_| Error::invalid_height_no_source())?;
 
-    let block_results = rpc_client
-        .block_results(tm_height)
-        .await
-        .map_err(|e| Error::rpc(rpc_address.clone(), e))?;
+    let block_results = match rpc_client.block_results(tm_height).await {
+        Ok(block_results) => block_results,
+        Err(e) if is_missing_event_attributes_rpc_error(&e) => {
+            warn!(
+                "skipping malformed block_results response at height {}: {}",
+                tm_height, e
+            );
+            return Ok(vec![]);
+        }
+        Err(e) => return Err(Error::rpc(rpc_address.clone(), e)),
+    };
 
     let mut events: Vec<_> = block_results
         .begin_block_events
@@ -401,5 +426,33 @@ pub fn all_ibc_events_from_tx_search_response(
             .collect::<Vec<_>>();
 
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_missing_event_attributes_error_message;
+
+    #[test]
+    fn matches_only_missing_attributes_serde_error() {
+        let cases = [
+            (
+                "serde parse error: missing field `attributes`",
+                true,
+            ),
+            (
+                "serde parse error: missing field `events`",
+                false,
+            ),
+            ("tcp connect timeout", false),
+        ];
+
+        for (message, expected) in cases {
+            assert_eq!(
+                is_missing_event_attributes_error_message(message),
+                expected,
+                "unexpected match result for message: {message}"
+            );
+        }
     }
 }
